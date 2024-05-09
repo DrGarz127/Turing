@@ -1,0 +1,119 @@
+<html>
+  <label id="tape"></label>
+  <hr>
+  <textarea id="program" name="program" rows="8" cols="80"></textarea>
+  <br>
+  <button onclick="parse();">Parse</button>
+  <button onclick="run();">Run</button>
+  <button onclick="step();">Step</button>
+  <script>
+    var tape_data = ["0"];
+    var tape_index = 0;
+    var states = [];
+    var machine_state = 0;
+    var complete = false;
+
+    function parse() {
+      var program = document.getElementById("program").value;
+      var state_split = program.split('\n');
+      for (var i = 0; i < state_split.length; i++) {
+        var state_data = state_split[i].split(',');
+        states.push(state_data);
+      }
+      console.log(states);
+      machine_state = states[0][0]
+    }
+
+    function step() {
+      if (complete) {
+        return;
+      }
+      var step_states = get_states_by_id(machine_state);
+      var current_value = tape_data[tape_index];
+      var matching_state = null;
+      console.log(step_states)
+      for (var i = 0; i < step_states.length; i++) {
+        if (step_states[i][1] == current_value) {
+          matching_state = step_states[i];
+        }
+      }
+      console.log("RUNNING STATE: " + matching_state)
+      if (matching_state != null) {
+        tape_data[tape_index] = matching_state[2];
+        if (matching_state[3] == 'r') {
+          tape_index += 1;
+          if (tape_index == tape_data.length) {
+            tape_data.push("0");
+          }
+        } else if (matching_state[3] == 'l') {
+          tape_index -= 1;
+          if (tape_index == -1) {
+            tape_data.unshift("0")
+            tape_index = 0;
+          }
+        }
+        machine_state = matching_state[4]
+        if (machine_state == "h") {
+          complete = true;
+        }
+      }
+      document.getElementById('tape').innerHTML = tape_data.join('');
+    }
+
+    function run() {
+      var stopped = false;
+      var time_out = 10;
+      parse();
+      machine_state = states[0][0]
+      while (!complete && time_out > 0) {
+        var step_states = get_states_by_id(machine_state);
+        var current_value = tape_data[tape_index];
+        var matching_state = null;
+        console.log(step_states)
+        for (var i = 0; i < step_states.length; i++) {
+          if (step_states[i][1] == current_value) {
+            matching_state = step_states[i];
+          }
+        }
+        console.log("RUNNING STATE: " + matching_state)
+        if (matching_state != null) {
+          tape_data[tape_index] = matching_state[2];
+          if (matching_state[3] == 'r') {
+            tape_index += 1;
+            if (tape_index == tape_data.length) {
+              tape_data.push("0");
+            }
+          } else if (matching_state[3] == 'l') {
+            tape_index -= 1;
+            if (tape_index == -1) {
+              tape_data.unshift("0")
+              tape_index = 0;
+            }
+          }
+          machine_state = matching_state[4]
+          if (machine_state == "h") {
+            complete = true;
+          }
+        }
+        document.getElementById('tape').innerHTML = tape_data.join('');
+      }
+    }
+
+    function get_states_by_id(id) {
+      var to_return = [];
+      for (var i = 0; i < states.length; i++) {
+        if (states[i][0] == id) {
+          to_return.push(states[i]);
+        }
+      }
+      return to_return;
+    }
+
+    function spliceSplit(str, index, count, add) {
+      console.log(str)
+      var ar = str.split('');
+      ar.splice(index, count, add);
+      return ar.join('');
+    }
+  </script>
+</html>
