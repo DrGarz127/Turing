@@ -1,72 +1,201 @@
 <html>
-  <label id="tape"></label>
-  <hr>
-  <textarea id="program" name="program" rows="8" cols="80"></textarea>
-  <br>
-  <button onclick="parse();">Parse</button>
-  <button onclick="run();">Run</button>
-  <button onclick="step();">Step</button>
-  <script>
-    console.log("hello");
-    var tape_data = ["0"];
-    var tape_index = 0;
-    var states = [];
-    var machine_state = 0;
-    var complete = false;
-
-    function parse() {
-      var program = document.getElementById("program").value;
-      var state_split = program.split('\n');
-      for (var i = 0; i < state_split.length; i++) {
-        var state_data = state_split[i].split(',');
-        states.push(state_data);
+  <head>
+    <style>
+      html, body {
+        max-width: 100%;
+        overflow-x: hidden;
       }
-      console.log(states);
-      machine_state = states[0][0]
-    }
-
-    function step() {
-      if (complete) {
-        return;
+      th, td {
+        border: 2px solid;
       }
-      var step_states = get_states_by_id(machine_state);
-      var current_value = tape_data[tape_index];
-      var matching_state = null;
-      console.log(step_states)
-      for (var i = 0; i < step_states.length; i++) {
-        if (step_states[i][1] == current_value) {
-          matching_state = step_states[i];
+      #tape_holder {
+        border-spacing: 0px;
+        table-layout: fixed;
+        width: 100%;
+        position: relative;
+        left: -150px;
+      }
+      .tape_cell {
+        border-top: 4px solid;
+        border-bottom: 4px solid;
+        border-right: 2px dashed;
+        border-left: 2px dashed;
+        height: 50px;
+        width: 50px;
+        text-align: center;
+        font-family: 'Courier New', monospace;
+        font-size: 200%;
+        font-weight: bold;
+      }
+      #program {
+        width: 50%;
+        border-radius: 15px;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 200%;
+        font-weight: bold;
+      }
+      h1 {
+        font-family: 'Courier New', monospace;
+        font-size: 500%;
+        font-weight: bold;
+      }
+
+      button {
+        width: 100px;
+        height: 50px;
+        border: 2px solid;
+        font-family: 'Courier New', monospace;
+        font-size: 30px;
+        font-weight: bold;
+      }
+      button:hover {
+        border: 2px dashed;
+      }
+      button:active {
+        border: 0px;
+      }
+    </style>
+  </head>
+  <body onresize="resize()">
+    <div align="center">
+      <h1>Turing Machine</h1>
+    </div>
+    <hr>
+    <table id="tape_holder">
+      <tr id="tape_row">
+      </tr>
+    </table>
+
+    <hr>
+    <br>
+    <div align="center">
+      <textarea id="program" name="program" rows="8" cols="80"></textarea>
+      <br><br>
+      <button onclick="run();">Run</button>
+      <button id="step_button" onclick="step();">Step</button>
+    </div>
+
+    <script>
+      var anim_timer = null;
+      var run_timer = null;
+      var tape_data = [];
+      var tape_elements = [];
+      var tape_index = 14;
+      var states = [];
+      var machine_state = 0;
+      var complete = false;
+      var shift_direction = -5;
+      var shifted = -150;
+      var total_shift = 0;
+      var running = false;
+      var moving = false;
+
+      load_tape();
+      resize();
+      set_tape_location();
+
+      function resize() {
+        let w = window.outerWidth;
+        let h = window.outerHeight;
+        var offset = ((tape_index + 1) * 56) + 14;
+        var location = offset - (w / 2)
+        console.log(offset + ", " + location);
+        document.getElementById("tape_holder").style.position = "relative";
+        shifted = -location;
+        document.getElementById("tape_holder").style.left = shifted+"px";
+        var p_width = 800 / w;
+        if (p_width > 1) {
+          p_width = 1;
+        }
+        var percent_width = Math.floor(90 * p_width);
+        if (percent_width < 50) {
+          percent_width = 50;
+        }
+        document.getElementById("program").style.width = percent_width+"%";
+      }
+
+      function load_tape() {
+        for (var i = 0; i < 100; i++) {
+          const td = document.createElement("td");
+          td.innerHTML = "0";
+          document.getElementById("tape_row").appendChild(td);
+          td.className = "tape_cell";
+          tape_data.push("0");
+          tape_elements.push(td);
+          /* td.style.position = "absolute";
+          var x_pos = i * 60;
+          var y_pos = 100;
+          td.style.left = x_pos+'px';
+          td.style.top = y_pos+'px'; */
         }
       }
-      console.log("RUNNING STATE: " + matching_state)
-      if (matching_state != null) {
-        tape_data[tape_index] = matching_state[2];
-        if (matching_state[3] == 'r') {
-          tape_index += 1;
-          if (tape_index == tape_data.length) {
-            tape_data.push("0");
+
+      function set_tape_location() {
+        for (var i = 0; i < tape_elements.length; i++) {
+          //console.log(tape_elements[i])
+          if (i == tape_index) {
+            tape_elements[i].style.color = "#ff0000";
+          } else {
+            tape_elements[i].style.color = "#000000";
           }
-        } else if (matching_state[3] == 'l') {
-          tape_index -= 1;
-          if (tape_index == -1) {
-            tape_data.unshift("0")
-            tape_index = 0;
-          }
-        }
-        machine_state = matching_state[4]
-        if (machine_state == "h") {
-          complete = true;
         }
       }
-      document.getElementById('tape').innerHTML = tape_data.join('');
-    }
 
-    function run() {
-      var stopped = false;
-      var time_out = 10;
-      parse();
-      machine_state = states[0][0]
-      while (!complete && time_out > 0) {
+      function start_movement(dir) {
+        anim_timer = setInterval(move_tape, 5);
+        if (dir == "left") {
+          shift_direction = 1;
+        } else {
+          shift_direction = -1;
+        }
+        document.getElementById("step_button").disabled = true;
+        moving = true;
+      }
+
+      function move_tape() {
+        console.log("moving " + shifted);
+        document.getElementById("tape_holder").style.position = "relative";
+        shifted += shift_direction;
+        document.getElementById("tape_holder").style.left = shifted+"px";
+        total_shift += Math.abs(shift_direction);
+        if (total_shift >= 56) {
+          clearInterval(anim_timer);
+          set_tape_location();
+          document.getElementById("step_button").disabled = false;
+          total_shift = 0;
+          moving = false;
+        }
+      }
+
+      function rewrite_tape() {
+        for (var i = 0; i < tape_elements.length; i++) {
+          tape_elements[i].innerHTML = tape_data[i];
+        }
+      }
+
+      function parse() {
+        var program = document.getElementById("program").value;
+        var state_split = program.split('\n');
+        for (var i = 0; i < state_split.length; i++) {
+          var state_data = state_split[i].split(',');
+          states.push(state_data);
+        }
+        console.log(states);
+        machine_state = states[0][0];
+      }
+
+      function step() {
+        if (complete) {
+          if (running) {
+            clearInterval(run_timer);
+            running = false
+          }
+          return;
+        }
+        if (moving) {
+          return;
+        }
         var step_states = get_states_by_id(machine_state);
         var current_value = tape_data[tape_index];
         var matching_state = null;
@@ -79,42 +208,65 @@
         console.log("RUNNING STATE: " + matching_state)
         if (matching_state != null) {
           tape_data[tape_index] = matching_state[2];
+          tape_elements[tape_index].innerHTML = matching_state[2];
           if (matching_state[3] == 'r') {
             tape_index += 1;
-            if (tape_index == tape_data.length) {
+            if (tape_index == tape_data.length - 20) {
+              const td = document.createElement("td");
+              td.innerHTML = "0";
+              document.getElementById("tape_row").appendChild(td);
               tape_data.push("0");
+              tape_elements.push(td);
             }
+            start_movement("right");
           } else if (matching_state[3] == 'l') {
             tape_index -= 1;
-            if (tape_index == -1) {
-              tape_data.unshift("0")
-              tape_index = 0;
+            if (tape_index == 12) {
+              const td = document.createElement("td");
+              td.innerHTML = "0";
+              document.getElementById("tape_row").appendChild(td);
+              tape_data.unshift("0");
+              tape_elements.push(td);
+              rewrite_tape();
+              tape_index += 1;
+              document.getElementById("tape_holder").style.position = "relative";
+              shifted -= 56;
+              document.getElementById("tape_holder").style.left = shifted+"px";
             }
+            start_movement("left");
           }
           machine_state = matching_state[4]
           if (machine_state == "h") {
             complete = true;
           }
         }
-        document.getElementById('tape').innerHTML = tape_data.join('');
+        //set_tape_location();
       }
-    }
 
-    function get_states_by_id(id) {
-      var to_return = [];
-      for (var i = 0; i < states.length; i++) {
-        if (states[i][0] == id) {
-          to_return.push(states[i]);
+      function run() {
+        var stopped = false;
+        var time_out = 10;
+        parse();
+        machine_state = states[0][0];
+        run_timer = setInterval(step, 5);
+      }
+
+      function get_states_by_id(id) {
+        var to_return = [];
+        for (var i = 0; i < states.length; i++) {
+          if (states[i][0] == id) {
+            to_return.push(states[i]);
+          }
         }
+        return to_return;
       }
-      return to_return;
-    }
 
-    function spliceSplit(str, index, count, add) {
-      console.log(str)
-      var ar = str.split('');
-      ar.splice(index, count, add);
-      return ar.join('');
-    }
-  </script>
+      function spliceSplit(str, index, count, add) {
+        console.log(str)
+        var ar = str.split('');
+        ar.splice(index, count, add);
+        return ar.join('');
+      }
+    </script>
+  </body>
 </html>
